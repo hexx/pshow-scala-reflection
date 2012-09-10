@@ -1,0 +1,177 @@
+<html>
+      <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <title>Scala 2.10 Reflection and Macros</title>
+        <link type="text/css" rel="stylesheet" href="assets/css/show.css" />
+        <link type="text/css" rel="stylesheet" href="assets/css/prettify.css" />
+        <script type="text/javascript" src="assets/js/jquery.min.js"></script>
+        <script type="text/javascript" src="assets/js/show.js"></script>
+        <script type="text/javascript" src="assets/js/prettify/prettify.js"></script>
+        <script type="text/javascript" src="assets/js/prettify/lang-apollo.js"></script><script type="text/javascript" src="assets/js/prettify/lang-css.js"></script><script type="text/javascript" src="assets/js/prettify/lang-hs.js"></script><script type="text/javascript" src="assets/js/prettify/lang-lisp.js"></script><script type="text/javascript" src="assets/js/prettify/lang-lua.js"></script><script type="text/javascript" src="assets/js/prettify/lang-ml.js"></script><script type="text/javascript" src="assets/js/prettify/lang-proto.js"></script><script type="text/javascript" src="assets/js/prettify/lang-scala.js"></script><script type="text/javascript" src="assets/js/prettify/lang-sql.js"></script><script type="text/javascript" src="assets/js/prettify/lang-sql.js"></script><script type="text/javascript" src="assets/js/prettify/lang-vb.js"></script><script type="text/javascript" src="assets/js/prettify/lang-vhdl.js"></script><script type="text/javascript" src="assets/js/prettify/lang-wiki.js"></script><script type="text/javascript" src="assets/js/prettify/lang-yaml.js"></script>
+      <script type="text/javascript"><!--
+        window.onload=function() { prettyPrint(); };
+      --></script>
+      </head>
+      <body>
+        <div id="slides">
+          <div id="reel">
+            <div class="content" id="slide-0">
+       <div class="container"><h1 id="Scala+2.10+Reflection+and+Macros">Scala 2.10 Reflection and Macros</h1><br/>
+<p><a title="@pab_tech" href="https://twitter.com/pab_tech">@pab_tech</a>
+</p></div>
+      </div><div class="content" id="slide-1">
+       <div class="container"><h2 id="%E5%86%85%E5%AE%B9">内容</h2><br/>
+<ul><li>Scala 2.9までのリフレクションの状況を軽く説明
+</li><li>Scala 2.10のリフレクションの紹介
+</li><li>Scala 2.10のマクロの紹介
+</li></ul></div>
+      </div><div class="content" id="slide-2">
+       <div class="container"><h2 id="Scala+2.9%E3%81%BE%E3%81%A7%E3%81%AE%E3%83%AA%E3%83%95%E3%83%AC%E3%82%AF%E3%82%B7%E3%83%A7%E3%83%B3">Scala 2.9までのリフレクション</h2><br/>
+<ul><li>Manifestを使ってJavaのクラスを取得
+<br/>
+→ Javaのリフレクションを使う。
+</li><li>裏技的にScalaSignatureを読み込み情報を取得する。
+</li></ul><br/>
+<p>要するにScalaとしてはリフレクションの手段をちゃんと用意していなかった。
+</p></div>
+      </div><div class="content" id="slide-3">
+       <div class="container"><h2 id="ClassManifest%E3%81%A8Manifest">ClassManifestとManifest</h2><br/>
+<ul><li>Implicit Parameterとして取得する。
+</li><li>Javaのクラスにアクセスできる。
+</li></ul><br/>
+<pre><code class="prettyprint lang-scala">def hoge[T: ClassManifest] = { 
+  val c = implicitly[ClassManifest[T]].erasure
+  ...
+}
+</code></pre></div>
+      </div><div class="content" id="slide-4">
+       <div class="container"><h2 id="ClassManifest%E3%81%A8Manifest">ClassManifestとManifest</h2><br/>
+<ul><li>基本的にJavaのクラスを取得するためだけのものと考えてよい。
+</li><li>型の比較もできる。が、あまり使わないと思う…。
+</li><li>JVMの型消去のため、型変数からクラスを取得できないために、こういう手段を使わざるをえない。
+</li><li>ClassManifestはそのクラスの情報だけ持っているだけ。
+</li><li>ManifestはClassManifestの機能に加えて、型引数のManifestも持っている。
+</li></ul></div>
+      </div><div class="content" id="slide-5">
+       <div class="container"><h2 id="ScalaSignature">ScalaSignature</h2><br/>
+<ul><li>Javaのクラスファイルに入っているScalaの情報。
+</li><li>ScalaSigParserを使って情報を取得することができる。
+</li></ul><br/>
+<pre><code class="prettyprint lang-scala">scala&gt; import scala.tools.scalap.scalax.rules.scalasig._
+
+scala&gt; val scalaSig = ScalaSigParser.parse(classOf[List[_]]).get
+
+scala&gt; scalaSig.topLevelClasses(0).children foreach println
+
+TypeSymbol(A, owner=0, flags=12100, info=19 )
+MethodSymbol(&lt;init&gt;, owner=0, flags=200, info=47 ,None)
+MethodSymbol(companion, owner=0, flags=220, info=50 ,None)
+MethodSymbol(isEmpty, owner=0, flags=300, info=56 ,None)
+MethodSymbol(head, owner=0, flags=300, info=62 ,None)
+...
+</code></pre></div>
+      </div><div class="content" id="slide-6">
+       <div class="container"><h2 id="ScalaSignature">ScalaSignature</h2><br/>
+<ul><li>型情報に加えてメソッドの情報などもわかる。
+</li><li>しかし公式にAPIが公開されているわけではなく、利用者も少ない。
+</li><li>xuwei_kさん曰く「積極的に使うべきものではない」とのこと。
+</li></ul></div>
+      </div><div class="content" id="slide-7">
+       <div class="container"><h2 id="Scala+2.10%E3%81%AE%E3%83%AA%E3%83%95%E3%83%AC%E3%82%AF%E3%82%B7%E3%83%A7%E3%83%B3">Scala 2.10のリフレクション</h2><br/>
+<p>Scala 2.9までと比べると大幅に整理、強化されている。
+</p><br/>
+<ol><li>今までScalaSignatureで取得していたような情報は、TypeTagを使ってアクセスできる。
+</li><li>メソッド呼び出しなどの操作は、Mirrorを使って行うことができる。
+</li><li>構文木を組み立てることで、任意のコードを実行することができる。
+</li></ol><br/>
+<p>3番目はリフレクションとしては特徴的。構文木の作成はマクロと共通の機能になっている。
+</p></div>
+      </div><div class="content" id="slide-8">
+       <div class="container"><h2 id="ClassTag%E3%81%A8TypeTag">ClassTagとTypeTag</h2><br/>
+<ul><li><a title="Scala Standard Library API - scala.reflect.base.TypeTags" href="http://www.scala-lang.org/archives/downloads/distrib/files/nightly/docs/library/index.html#scala.reflect.base.TypeTags">Scaladoc</a> に詳しい説明がある
+</li><li>Manifestの置き換えらしい。
+</li><li>Implicit Parameterで取得するのは同じ。
+</li><li>ClassTagはほとんどClassManifestと同じ。つまりJavaのクラスを取得するだけ。
+</li><li>TypeTagはもはやManifestとは別物と思われる。
+</li></ul></div>
+      </div><div class="content" id="slide-9">
+       <div class="container"><h2 id="TypeTag%E3%81%A8Type">TypeTagとType</h2><ul><li>TypeTagはTypeオブジェクトを取得できる。
+</li><li>TypeオブジェクトはScalaSignatureで取得できたような情報が入っている。
+</li><li>implicitかどうかなど、Javaのリフレクションでは取得できなかった情報も取得できる。
+</li></ul><br/>
+<pre><code class="prettyprint lang-scala">scala&gt; import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe._
+
+scala&gt; val t = typeTag[List[_]].tpe
+t: reflect.runtime.universe.Type = scala.List[_]
+
+scala&gt; val m = t.member(newTermName(&quot;filter&quot;))
+m: reflect.runtime.universe.Symbol = method filter
+
+scala&gt; m.asMethod.isImplicit
+res0: Boolean = false
+</code></pre></div>
+      </div><div class="content" id="slide-10">
+       <div class="container"><h2 id="Universe">Universe</h2><br/>
+<ul><li>CAKEパターンで作られたリフレクションAPIの集合体。
+</li><li>細かく階層が分かれている。
+</li><li>ただのクラス設計かと思いきや、どの階層でコードを書いているかを意識することが重要。
+</li></ul></div>
+      </div><div class="content" id="slide-11">
+       <div class="container"><h2 id="Universe">Universe</h2><p><img alt="Reflection universes"  src="scala210reflection/reflection-hierarchy.jpg" />
+</p></div>
+      </div><div class="content" id="slide-12">
+       <div class="container"><h2 id="Universe">Universe</h2><br/>
+<ul><li>マクロはreflect.macro.Universeを使う。
+</li><li>リフレクションはreflect.api.JavaUniverseを使う。
+</li><li>両方から使えるものを作りたい場合はreflect.api.Universeを使う。
+</li><li>ちなみにGlobalというのはコンパイラで使われるもので、コンパイラプラグインを作るときに出てくる。
+</li><li>マクロではContextでもAPIが提供されており、階層を行ったり来たりすると、どこで何が定義されているのか、何が使えるのかで頭がこんがらがる。
+</li></ul></div>
+      </div><div class="content" id="slide-13">
+       <div class="container"><h2 id="Mirror">Mirror</h2><br/>
+<ul><li>Symbolはクラスやメソッド、変数などの定義に対応している。
+</li><li>Symbolが表わしている対象をメタレベルで操作するときにはMirrorを使う
+</li><li>トップレベルのMirrorはJavaのクラスローダに対応おり、そこからオブジェクトのMirrorやメソッドのMirrorを作る。
+</li></ul><pre><code class="prettyprint lang-scala">scala&gt; import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe._
+
+scala&gt; import scala.reflect.runtime.{currentMirror =&gt; cm}
+import scala.reflect.runtime.{currentMirror=&gt;cm}
+
+scala&gt; val m = typeOf[List[_]].member(newTermName(&quot;head&quot;))
+m: reflect.runtime.universe.Symbol = method head
+
+scala&gt; cm.reflect(List(1,2,3)).reflectMethod(m.asMethod)()
+res0: Any = 1
+</code></pre></div>
+      </div><div class="content" id="slide-14">
+       <div class="container"><h2 id="%E3%83%9E%E3%82%AF%E3%83%AD">マクロ</h2><br/>
+<ul><li>今のところ予定のうちの一部の機能しか実装されていない。
+</li><li>使えるのは「型付きの関数のマクロ」だけ。
+</li><li>「型付きの関数のマクロ」というのは型付けされたScalaの式を受け取り式を返すマクロ。
+</li><li>この制約がきつく、新しい構文の導入やコードの生成といったものがやりにくいことになっている。
+</li></ul></div>
+      </div><div class="content" id="slide-15">
+       <div class="container"><h2 id="%E3%83%AA%E3%83%95%E3%83%AC%E3%82%AF%E3%82%B7%E3%83%A7%E3%83%B3%E3%81%A8%E3%83%9E%E3%82%AF%E3%83%AD%E3%81%AE%E6%AF%94%E8%BC%83">リフレクションとマクロの比較</h2></div>
+      </div><div class="content" id="slide-16">
+       <div class="container"><h2 id="%E3%83%9E%E3%82%AF%E3%83%AD%E3%81%AE%E7%89%B9%E5%BE%B4">マクロの特徴</h2><br/>
+<ul><li>型付けされたScalaのコードの構文木を受け取ることができる。
+</li><li>そのマクロを呼び出した構文やクラスの情報にアクセスできる。
+</li><li>コンパイル時に計算できるので実行時の処理が軽くて済む。
+</li><li>型チェックできる。
+</li><li>あまり大きな式を作ってしまうと展開されたときにコードのサイズが大きくなる。
+</li></ul></div>
+      </div><div class="content" id="slide-17">
+       <div class="container"><h2 id="%E3%83%AA%E3%83%95%E3%83%AC%E3%82%AF%E3%82%B7%E3%83%A7%E3%83%B3%E3%81%AE%E7%89%B9%E5%BE%B4">リフレクションの特徴</h2><br/>
+<ul><li>動的に動作を変えることができる。
+</li><li>実行時に構文木を解釈することになるので、処理が重くなる。
+</li><li>型チェックができない。
+</li><li>場合によっては広く展開されてしまうマクロよりコードサイズが小さくなる。
+</li></ul></div>
+      </div>
+          </div>
+        </div>
+        
+      </body>
+    </html>
